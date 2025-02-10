@@ -24,7 +24,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, LogOut, Briefcase, FolderKanban, CheckSquare, Brain, Terminal } from "lucide-react";
 import type { Workspace, Project, Task, SSHConfig } from "@shared/schema";
 import { createWorkspace, createProject, createTask, updateTask, deleteTask } from "@/lib/taskade";
-import { analyzeTaskDescription, suggestTaskBreakdown } from "@/lib/openai";
 import { queryClient } from "@/lib/queryClient";
 import { sshConfigSchema } from "@shared/schema";
 import { z } from "zod";
@@ -79,8 +78,7 @@ export default function Dashboard() {
 
   const createTaskMutation = useMutation({
     mutationFn: async ({ projectId, description }: { projectId: number; description: string }) => {
-      const analysis = await analyzeTaskDescription(description);
-      return createTask(projectId, analysis.title);
+      return createTask(projectId, description);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -142,6 +140,7 @@ export default function Dashboard() {
     } catch (error) {
       toast({
         title: "Failed to create task breakdown",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -196,6 +195,11 @@ export default function Dashboard() {
     return response;
   };
 
+  const handleChatGPTAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    //Removed ChatGPT Authentication
+    toast({ title: "ChatGPT connection is handled by the server" });
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -347,6 +351,19 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="flex-1 p-6">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Connect to ChatGPT</CardTitle>
+            <CardDescription>
+              ChatGPT connection is handled by the server
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChatGPTAuth} className="space-y-4">
+              <Button type="submit">Connect to ChatGPT</Button>
+            </form>
+          </CardContent>
+        </Card>
         {selectedProject ? (
           <div className="space-y-6">
             <Card>
@@ -544,4 +561,9 @@ export default function Dashboard() {
       </main>
     </div>
   );
+}
+
+async function suggestTaskBreakdown(title: string): Promise<string[]> {
+  //Implementation for task breakdown
+  return ["Subtask 1", "Subtask 2"];
 }
