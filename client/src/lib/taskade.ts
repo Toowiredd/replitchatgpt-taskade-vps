@@ -1,39 +1,28 @@
+import { Taskade } from '@taskade/sdk';
+
 import { apiRequest } from "./queryClient";
 import type { Workspace, Project, Task } from "@shared/schema";
 
-export async function createWorkspace(name: string): Promise<Workspace> {
-  const res = await apiRequest("POST", "/api/workspaces", { name });
-  return res.json();
+const taskade = new Taskade({
+  apiKey: import.meta.env.VITE_TASKADE_API_KEY
+});
+
+export async function createWorkspace(name: string) {
+  return await taskade.workspaces.create({ name });
 }
 
-export async function createProject(
-  workspaceId: number,
-  name: string,
-): Promise<Project> {
-  const res = await apiRequest("POST", `/api/workspaces/${workspaceId}/projects`, {
-    name,
-  });
-  return res.json();
+export async function createProject(workspaceId: string, name: string) {
+  return await taskade.projects.create({ workspaceId, name });
 }
 
-export async function createTask(
-  projectId: number,
-  title: string,
-): Promise<Task> {
-  const res = await apiRequest("POST", `/api/projects/${projectId}/tasks`, {
-    title,
-  });
-  return res.json();
+export async function createTask(projectId: string, title: string) {
+  return await taskade.tasks.create({ projectId, content: title });
 }
 
-export async function updateTask(
-  taskId: number,
-  updates: Partial<Task>,
-): Promise<Task> {
-  const res = await apiRequest("PATCH", `/api/tasks/${taskId}`, updates);
-  return res.json();
+export async function updateTask(taskId: string, updates: any) {
+  return await taskade.tasks.update(taskId, updates);
 }
 
-export async function deleteTask(taskId: number): Promise<void> {
-  await apiRequest("DELETE", `/api/tasks/${taskId}`);
+export async function deleteTask(taskId: string) {
+  return await taskade.tasks.delete(taskId);
 }
