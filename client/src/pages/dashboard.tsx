@@ -1,7 +1,3 @@
-` tag from line 1 of the original code and append the rest of the original code after the imports section in the edited code.
-
-
-<replit_final_file>
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
