@@ -402,7 +402,7 @@ export default function Dashboard() {
                             }
                           >
                             <CheckSquare
-                              className={`h-5 w-5 ${task.completed ? "text-primary" : ""}`}
+                              className={`h-5 w-5 ${task.completed ? "text-green-500" : "text-gray-400"}`}t-primary" : ""}`}
                             />
                           </Button>
                           <span className={task.completed ? "line-through text-muted-foreground" : ""}>
