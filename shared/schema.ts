@@ -108,3 +108,22 @@ export interface List {
   projectId: number;
   createdAt: Date;
 }
+
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  status: 'active' | 'inactive';
+  createdAt: Date;
+}
+
+export interface AgentExecution {
+  id: string;
+  agentId: string;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  action: string;
+  parameters: Record<string, any>;
+  result: any;
+  startedAt: Date;
+  completedAt?: Date;
+}

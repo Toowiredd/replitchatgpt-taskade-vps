@@ -131,3 +131,27 @@ export async function addTaskAttachment(taskId: string, file: File): Promise<voi
   formData.append('file', file);
   return taskadeRequest("POST", `/tasks/${taskId}/attachments`, formData);
 }
+
+// Agent operations
+export async function createAgent(name: string, description: string) {
+  return taskadeRequest("POST", "/agents", { name, description });
+}
+
+export async function getAgents() {
+  return taskadeRequest("GET", "/agents");
+}
+
+export async function executeAgentAction(agentId: string, action: string, parameters: Record<string, any>) {
+  return taskadeRequest("POST", `/agents/${agentId}/execute`, { 
+    action,
+    parameters 
+  });
+}
+
+export async function getAgentExecutions(agentId: string) {
+  return taskadeRequest("GET", `/agents/${agentId}/executions`);
+}
+
+export async function stopAgentExecution(agentId: string, executionId: string) {
+  return taskadeRequest("POST", `/agents/${agentId}/executions/${executionId}/stop`);
+}
