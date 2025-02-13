@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React from 'react';
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -27,11 +28,13 @@ import { createWorkspace, createProject, createTask, updateTask, deleteTask } fr
 import { queryClient } from "@/lib/queryClient";
 import { sshConfigSchema } from "@shared/schema";
 import { z } from "zod";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@radix-ui/react-dialog'
+
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
@@ -49,24 +52,24 @@ export default function Dashboard() {
       }
     };
 
-const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
-
-useEffect(() => {
-  const handleKeyPress = (e: KeyboardEvent) => {
-    if (e.key === '?' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      setShowKeyboardShortcuts(true);
-    }
-  };
-  
-  window.addEventListener('keydown', handleKeyPress);
-  return () => window.removeEventListener('keydown', handleKeyPress);
-}, []);
-
-    
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [taskDescription, selectedProject]);
+
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === '?' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setShowKeyboardShortcuts(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   const { toast } = useToast();
   const [selectedWorkspace, setSelectedWorkspace] = useState<number | null>(null);
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
@@ -368,22 +371,22 @@ useEffect(() => {
         </div>
 
         <div className="space-y-6 flex-1">
-        <Button 
-          onClick={() => {
-            const blob = new Blob([JSON.stringify(openApiSpec, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'openapi-spec.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }}
-          className="mb-4"
-        >
-          Download API Specification
-        </Button>
+          <Button 
+            onClick={() => {
+              const blob = new Blob([JSON.stringify(openApiSpec, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'openapi-spec.json';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+            className="mb-4"
+          >
+            Download API Specification
+          </Button>
           {/* Agents Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -702,25 +705,6 @@ useEffect(() => {
                         </div>
                       </div>
                     </CardContent>
-
-<Dialog open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Keyboard Shortcuts</DialogTitle>
-    </DialogHeader>
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>Ctrl/⌘ + N</div>
-        <div>New Task</div>
-        <div>Ctrl/⌘ + Enter</div>
-        <div>Create Task</div>
-        <div>Ctrl/⌘ + ?</div>
-        <div>Show Shortcuts</div>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-
                   </Card>
                 ))
               )}
@@ -834,6 +818,23 @@ useEffect(() => {
             Select a project to view and manage tasks
           </div>
         )}
+        <Dialog open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>Ctrl/⌘ + N</div>
+                <div>New Task</div>
+                <div>Ctrl/⌘ + Enter</div>
+                <div>Create Task</div>
+                <div>Ctrl/⌘ + ?</div>
+                <div>Show Shortcuts</div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
