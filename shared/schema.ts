@@ -75,3 +75,28 @@ export const userSettings = pgTable("user_settings", {
   userId: serial("user_id").references(() => users.id),
   sshConfig: jsonb("ssh_config"),
 });
+
+export interface Task {
+  id: number;
+  title: string;
+  projectId: number;
+  completed: boolean;
+  createdAt: Date;
+  assignedTo: number | null;
+  metadata: Record<string, any> | null;
+}
+
+export interface Comment {
+  id: number;
+  content: string;
+  taskId: number;
+  userId: number;
+  createdAt: Date;
+}
+
+export interface List {
+  id: number;
+  name: string;
+  projectId: number;
+  createdAt: Date;
+}
