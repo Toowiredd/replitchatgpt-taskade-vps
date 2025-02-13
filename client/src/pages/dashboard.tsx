@@ -30,6 +30,28 @@ import { z } from "zod";
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();
+
+  React.useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'n':
+            e.preventDefault();
+            setTaskDescription('');
+            break;
+          case 'Enter':
+            if (taskDescription && selectedProject) {
+              e.preventDefault();
+              handleCreateTask(new Event('submit') as any);
+            }
+            break;
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [taskDescription, selectedProject]);
   const { toast } = useToast();
   const [selectedWorkspace, setSelectedWorkspace] = useState<number | null>(null);
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
@@ -107,6 +129,22 @@ export default function Dashboard() {
     mutationFn: async ({ taskId, updates }: { taskId: number; updates: Partial<Task> }) => {
       return updateTask(taskId.toString(), updates);
     },
+    onMutate: async ({ taskId, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProject, "tasks"] });
+      const previousTasks = queryClient.getQueryData(["/api/projects", selectedProject, "tasks"]);
+      queryClient.setQueryData(["/api/projects", selectedProject, "tasks"], (old: Task[] = []) => {
+        return old.map(task => task.id === taskId ? { ...task, ...updates } : task);
+      });
+      return { previousTasks };
+    },
+    onError: (err, _, context) => {
+      queryClient.setQueryData(["/api/projects", selectedProject, "tasks"], context?.previousTasks);
+      toast({
+        title: "Failed to update task",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/projects", selectedProject, "tasks"],
@@ -157,8 +195,23 @@ export default function Dashboard() {
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskDescription || !selectedProject) return;
-    createTaskMutation.mutate({ projectId: selectedProject, description: taskDescription });
+    if (!taskDescription.trim()) {
+      toast({
+        title: "Invalid task",
+        description: "Task description cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!selectedProject) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project first",
+        variant: "destructive",
+      });
+      return;
+    }
+    createTaskMutation.mutate({ projectId: selectedProject, description: taskDescription.trim() });
   };
 
   const handleTaskBreakdown = async (taskId: number, title: string) => {
@@ -406,6 +459,23 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="flex-1 p-6">
+        <nav className="mb-4">
+          <ol className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <li>Workspaces</li>
+            {selectedWorkspace && workspaces && (
+              <>
+                <li>/</li>
+                <li>{workspaces.find(w => w.id === selectedWorkspace)?.name}</li>
+              </>
+            )}
+            {selectedProject && projects && (
+              <>
+                <li>/</li>
+                <li>{projects.find(p => p.id === selectedProject)?.name}</li>
+              </>
+            )}
+          </ol>
+        </nav>
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Connect to ChatGPT</CardTitle>
@@ -570,7 +640,10 @@ export default function Dashboard() {
                           onChange={(e) => updateSSHConfig('passphrase', e.target.value)}
                         />
                       </div>
-                      <Button type="submit">Configure SSH Connection</Button>
+                      <Button type="submit" disabled={isConnecting}>
+                        {isConnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Configure SSH Connection
+                      </Button>
                     </form>
 
                     <Separator />
