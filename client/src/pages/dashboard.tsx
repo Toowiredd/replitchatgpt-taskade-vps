@@ -231,8 +231,22 @@ export default function Dashboard() {
 
   const handleChatGPTAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    //Removed ChatGPT Authentication
-    toast({ title: "ChatGPT connection is handled by the server" });
+    try {
+      const chatGPT = new ChatGPTClient({
+        endpoint: "YOUR_CUSTOM_ENDPOINT",
+        apiKey: "YOUR_CUSTOM_KEY" // Optional
+      });
+      await chatGPT.connect({
+        endpoint: "YOUR_CUSTOM_ENDPOINT",
+        apiKey: "YOUR_CUSTOM_KEY" // Optional
+      });
+      toast({ title: "Successfully connected to custom ChatGPT" });
+    } catch (error) {
+      toast({ 
+        title: "Failed to connect to ChatGPT",
+        variant: "destructive"
+      });
+    }
   };
 
   const updateSSHConfig = (field: keyof SSHConfig, value: string | number) => {
