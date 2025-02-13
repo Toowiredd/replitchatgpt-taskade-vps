@@ -552,11 +552,12 @@ useEffect(() => {
                       disabled={createTaskMutation.isPending || !taskDescription.trim()}
                       className="w-32"
                     >
-                    {createTaskMutation.isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Create Task
-                  </Button>
+                      {createTaskMutation.isPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Create Task
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </Card>
