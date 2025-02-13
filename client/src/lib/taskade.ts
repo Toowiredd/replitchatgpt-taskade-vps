@@ -155,3 +155,23 @@ export async function getAgentExecutions(agentId: string) {
 export async function stopAgentExecution(agentId: string, executionId: string) {
   return taskadeRequest("POST", `/agents/${agentId}/executions/${executionId}/stop`);
 }
+
+export async function updateAgent(agentId: string, updates: Partial<Agent>) {
+  return taskadeRequest("PATCH", `/agents/${agentId}`, updates);
+}
+
+export async function deleteAgent(agentId: string) {
+  return taskadeRequest("DELETE", `/agents/${agentId}`);
+}
+
+export async function trainAgent(agentId: string, trainingData: any) {
+  return taskadeRequest("POST", `/agents/${agentId}/train`, trainingData);
+}
+
+export async function getAgentCapabilities(agentId: string) {
+  return taskadeRequest("GET", `/agents/${agentId}/capabilities`);
+}
+
+export async function assignAgentToTask(taskId: string, agentId: string) {
+  return taskadeRequest("POST", `/tasks/${taskId}/assign-agent`, { agentId });
+}

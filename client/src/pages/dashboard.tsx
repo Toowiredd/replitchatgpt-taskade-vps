@@ -360,6 +360,61 @@ useEffect(() => {
         </div>
 
         <div className="space-y-6 flex-1">
+          {/* Agents Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                AI Agents
+              </h2>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Create Agent</SheetTitle>
+                    <SheetDescription>
+                      Configure a new AI agent to assist with tasks
+                    </SheetDescription>
+                  </SheetHeader>
+                  <form onSubmit={handleCreateAgent} className="mt-4 space-y-4">
+                    <Input
+                      value={newAgentName}
+                      onChange={(e) => setNewAgentName(e.target.value)}
+                      placeholder="Agent name"
+                    />
+                    <textarea 
+                      className="w-full min-h-[100px] rounded-md border p-2"
+                      value={newAgentDescription}
+                      onChange={(e) => setNewAgentDescription(e.target.value)}
+                      placeholder="Agent description and capabilities"
+                    />
+                    <Button type="submit" className="w-full">
+                      Create Agent
+                    </Button>
+                  </form>
+                </SheetContent>
+              </Sheet>
+            </div>
+            {agents?.map((agent) => (
+              <div key={agent.id} className="flex items-center justify-between p-2 hover:bg-accent rounded-lg">
+                <div>
+                  <p className="font-medium">{agent.name}</p>
+                  <p className="text-sm text-muted-foreground">{agent.description}</p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => handleAssignAgent(agent.id)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
           {/* Workspaces Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
