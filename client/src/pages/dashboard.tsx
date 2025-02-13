@@ -488,7 +488,11 @@ export default function Dashboard() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => deleteTaskMutation.mutate(task.id)}
+                            onClick={() => {
+                              if (window.confirm("Are you sure you want to delete this task?")) {
+                                deleteTaskMutation.mutate(task.id);
+                              }
+                            }}
                           >
                             <Plus className="h-5 w-5 rotate-45" />
                           </Button>
@@ -545,13 +549,17 @@ export default function Dashboard() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="privateKey">Private Key</Label>
-                        <Input
+                        <textarea
                           id="privateKey"
-                          type="password"
+                          className="min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                           value={sshConfig.privateKey}
                           onChange={(e) => updateSSHConfig('privateKey', e.target.value)}
-                          placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                          placeholder="Paste your private key here"
+                          spellCheck="false"
                         />
+                        <p className="text-sm text-muted-foreground">
+                          Your private key will be securely stored and encrypted
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="passphrase">Passphrase (Optional)</Label>

@@ -12,6 +12,24 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
   const [formData, setFormData] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({ username: "", password: "" });
+  
+  const validateForm = () => {
+    const newErrors = { username: "", password: "" };
+    let isValid = true;
+
+    if (formData.username.length < 3) {
+      newErrors.username = "Username must be at least 3 characters";
+      isValid = false;
+    }
+    if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   if (user) {
     setLocation("/");
@@ -45,14 +63,21 @@ export default function AuthPage() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="username">Username</Label>
-                      <Input
-                        id="username"
-                        value={formData.username}
-                        onChange={(e) =>
-                          setFormData({ ...formData, username: e.target.value })
-                        }
-                        required
-                      />
+                      <div className="space-y-1">
+                        <Input
+                          id="username"
+                          value={formData.username}
+                          onChange={(e) => {
+                            setFormData({ ...formData, username: e.target.value });
+                            setErrors({ ...errors, username: "" });
+                          }}
+                          required
+                          className={errors.username ? "border-red-500" : ""}
+                        />
+                        {errors.username && (
+                          <p className="text-sm text-red-500">{errors.username}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password">Password</Label>
