@@ -61,3 +61,40 @@ export async function deleteTask(taskId: string): Promise<void> {
 export async function getTasks(projectId: string): Promise<Task[]> {
   return taskadeRequest("GET", `/projects/${projectId}/tasks`);
 }
+
+// Comment operations
+export async function addComment(taskId: string, content: string): Promise<Comment> {
+  return taskadeRequest("POST", `/tasks/${taskId}/comments`, { content });
+}
+
+export async function getComments(taskId: string): Promise<Comment[]> {
+  return taskadeRequest("GET", `/tasks/${taskId}/comments`);
+}
+
+// Subtask operations
+export async function addSubtask(taskId: string, title: string): Promise<Task> {
+  return taskadeRequest("POST", `/tasks/${taskId}/subtasks`, { title });
+}
+
+export async function getSubtasks(taskId: string): Promise<Task[]> {
+  return taskadeRequest("GET", `/tasks/${taskId}/subtasks`);
+}
+
+// List operations
+export async function createList(projectId: string, name: string): Promise<List> {
+  return taskadeRequest("POST", `/projects/${projectId}/lists`, { name });
+}
+
+export async function getLists(projectId: string): Promise<List[]> {
+  return taskadeRequest("GET", `/projects/${projectId}/lists`);
+}
+
+// Task assignment
+export async function assignTask(taskId: string, userId: string): Promise<Task> {
+  return taskadeRequest("POST", `/tasks/${taskId}/assign`, { userId });
+}
+
+// Task status
+export async function setTaskStatus(taskId: string, status: string): Promise<Task> {
+  return taskadeRequest("PATCH", `/tasks/${taskId}/status`, { status });
+}
