@@ -48,6 +48,21 @@ export default function Dashboard() {
         }
       }
     };
+
+const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+useEffect(() => {
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if (e.key === '?' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      setShowKeyboardShortcuts(true);
+    }
+  };
+  
+  window.addEventListener('keydown', handleKeyPress);
+  return () => window.removeEventListener('keydown', handleKeyPress);
+}, []);
+
     
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
@@ -251,11 +266,30 @@ export default function Dashboard() {
 
   const executeCommand = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!command) return;
+    if (!command.trim()) {
+      toast({
+        title: "Invalid command",
+        description: "Please enter a command to execute",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      setCommandOutput(null);
       const res = await apiRequest("POST", "/api/ssh/execute", { command });
       const output = await res.json();
+      if (output.stderr) {
+        toast({
+          title: "Command executed with errors",
+          description: "Check the output for details",
+          variant: "warning",
+        });
+      } else {
+        toast({
+          title: "Command executed successfully",
+        });
+      }
       setCommandOutput(output);
       setCommand("");
     } catch (error) {
@@ -552,8 +586,13 @@ export default function Dashboard() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleTaskBreakdown(task.id, task.title)}
+                            disabled={createTaskMutation.isPending}
                           >
-                            <Brain className="h-5 w-5" />
+                            {createTaskMutation.isPending ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <Brain className="h-5 w-5" />
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
@@ -569,6 +608,25 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </CardContent>
+
+<Dialog open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Keyboard Shortcuts</DialogTitle>
+    </DialogHeader>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>Ctrl/⌘ + N</div>
+        <div>New Task</div>
+        <div>Ctrl/⌘ + Enter</div>
+        <div>Create Task</div>
+        <div>Ctrl/⌘ + ?</div>
+        <div>Show Shortcuts</div>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
+
                   </Card>
                 ))
               )}
