@@ -46,8 +46,17 @@ export async function getProjects(workspaceId: string): Promise<Project[]> {
 }
 
 // Task operations
-export async function createTask(projectId: string, title: string): Promise<Task> {
-  return taskadeRequest("POST", `/projects/${projectId}/tasks`, { title });
+export async function createTask(
+  projectId: string, 
+  title: string, 
+  priority: 'low' | 'medium' | 'high' = 'medium',
+  dueDate?: Date
+): Promise<Task> {
+  return taskadeRequest("POST", `/projects/${projectId}/tasks`, { 
+    title,
+    priority,
+    dueDate: dueDate?.toISOString()
+  });
 }
 
 export async function updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
