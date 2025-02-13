@@ -1,8 +1,8 @@
-import type { Workspace, Project, Task } from "@shared/schema";
+
+import type { Workspace, Project, Task, Comment, List } from "@shared/schema";
 
 const TASKADE_API_BASE = "https://api.taskade.com/v1";
 
-// Helper function to make authenticated requests to Taskade API
 async function taskadeRequest(
   method: string,
   endpoint: string,
@@ -27,27 +27,49 @@ async function taskadeRequest(
   return response.json();
 }
 
-// Workspace operations
-export async function createWorkspace(name: string): Promise<Workspace> {
-  return taskadeRequest("POST", "/workspaces", { name });
+// Workspace operations with full features
+export async function createWorkspace(name: string, settings?: any): Promise<Workspace> {
+  return taskadeRequest("POST", "/workspaces", { name, settings });
 }
 
 export async function getWorkspaces(): Promise<Workspace[]> {
   return taskadeRequest("GET", "/workspaces");
 }
 
-// Project operations
-export async function createProject(workspaceId: string, name: string): Promise<Project> {
-  return taskadeRequest("POST", `/workspaces/${workspaceId}/projects`, { name });
+export async function updateWorkspace(id: string, updates: Partial<Workspace>): Promise<Workspace> {
+  return taskadeRequest("PATCH", `/workspaces/${id}`, updates);
+}
+
+// Project operations with templates
+export async function createProject(workspaceId: string, name: string, template?: string): Promise<Project> {
+  return taskadeRequest("POST", `/workspaces/${workspaceId}/projects`, { name, template });
 }
 
 export async function getProjects(workspaceId: string): Promise<Project[]> {
   return taskadeRequest("GET", `/workspaces/${workspaceId}/projects`);
 }
 
-// Task operations
-export async function createTask(projectId: string, title: string): Promise<Task> {
-  return taskadeRequest("POST", `/projects/${projectId}/tasks`, { title });
+export async function updateProject(id: string, updates: Partial<Project>): Promise<Project> {
+  return taskadeRequest("PATCH", `/projects/${id}`, updates);
+}
+
+// Enhanced task operations
+export async function createTask(
+  projectId: string,
+  title: string,
+  options?: {
+    priority?: 'low' | 'medium' | 'high';
+    dueDate?: Date;
+    assignees?: string[];
+    labels?: string[];
+    description?: string;
+  }
+): Promise<Task> {
+  return taskadeRequest("POST", `/projects/${projectId}/tasks`, {
+    title,
+    ...options,
+    dueDate: options?.dueDate?.toISOString(),
+  });
 }
 
 export async function updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
@@ -62,22 +84,13 @@ export async function getTasks(projectId: string): Promise<Task[]> {
   return taskadeRequest("GET", `/projects/${projectId}/tasks`);
 }
 
-// Comment operations
+// Comment functionality
 export async function addComment(taskId: string, content: string): Promise<Comment> {
   return taskadeRequest("POST", `/tasks/${taskId}/comments`, { content });
 }
 
 export async function getComments(taskId: string): Promise<Comment[]> {
   return taskadeRequest("GET", `/tasks/${taskId}/comments`);
-}
-
-// Subtask operations
-export async function addSubtask(taskId: string, title: string): Promise<Task> {
-  return taskadeRequest("POST", `/tasks/${taskId}/subtasks`, { title });
-}
-
-export async function getSubtasks(taskId: string): Promise<Task[]> {
-  return taskadeRequest("GET", `/tasks/${taskId}/subtasks`);
 }
 
 // List operations
@@ -94,7 +107,71 @@ export async function assignTask(taskId: string, userId: string): Promise<Task> 
   return taskadeRequest("POST", `/tasks/${taskId}/assign`, { userId });
 }
 
-// Task status
+// Task status and labels
 export async function setTaskStatus(taskId: string, status: string): Promise<Task> {
   return taskadeRequest("PATCH", `/tasks/${taskId}/status`, { status });
+}
+
+export async function addTaskLabel(taskId: string, label: string): Promise<Task> {
+  return taskadeRequest("POST", `/tasks/${taskId}/labels`, { label });
+}
+
+// Task relationships
+export async function createSubtask(parentTaskId: string, title: string): Promise<Task> {
+  return taskadeRequest("POST", `/tasks/${parentTaskId}/subtasks`, { title });
+}
+
+export async function linkTasks(taskId: string, linkedTaskId: string): Promise<void> {
+  return taskadeRequest("POST", `/tasks/${taskId}/links/${linkedTaskId}`);
+}
+
+// Task attachments
+export async function addTaskAttachment(taskId: string, file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return taskadeRequest("POST", `/tasks/${taskId}/attachments`, formData);
+}
+
+// Agent operations
+export async function createAgent(name: string, description: string) {
+  return taskadeRequest("POST", "/agents", { name, description });
+}
+
+export async function getAgents() {
+  return taskadeRequest("GET", "/agents");
+}
+
+export async function executeAgentAction(agentId: string, action: string, parameters: Record<string, any>) {
+  return taskadeRequest("POST", `/agents/${agentId}/execute`, { 
+    action,
+    parameters 
+  });
+}
+
+export async function getAgentExecutions(agentId: string) {
+  return taskadeRequest("GET", `/agents/${agentId}/executions`);
+}
+
+export async function stopAgentExecution(agentId: string, executionId: string) {
+  return taskadeRequest("POST", `/agents/${agentId}/executions/${executionId}/stop`);
+}
+
+export async function updateAgent(agentId: string, updates: Partial<Agent>) {
+  return taskadeRequest("PATCH", `/agents/${agentId}`, updates);
+}
+
+export async function deleteAgent(agentId: string) {
+  return taskadeRequest("DELETE", `/agents/${agentId}`);
+}
+
+export async function trainAgent(agentId: string, trainingData: any) {
+  return taskadeRequest("POST", `/agents/${agentId}/train`, trainingData);
+}
+
+export async function getAgentCapabilities(agentId: string) {
+  return taskadeRequest("GET", `/agents/${agentId}/capabilities`);
+}
+
+export async function assignAgentToTask(taskId: string, agentId: string) {
+  return taskadeRequest("POST", `/tasks/${taskId}/assign-agent`, { agentId });
 }

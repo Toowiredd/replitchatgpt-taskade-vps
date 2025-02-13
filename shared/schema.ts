@@ -30,6 +30,9 @@ export const tasks = pgTable("tasks", {
   assignedTo: serial("assigned_to").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   metadata: jsonb("metadata"),
+  priority: text("priority"), // Added priority field
+  dueDate: timestamp("due_date"), // Added due date field
+
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -50,6 +53,8 @@ export const insertTaskSchema = createInsertSchema(tasks).pick({
   title: true,
   projectId: true,
   assignedTo: true,
+  priority: true,
+  dueDate: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -84,6 +89,9 @@ export interface Task {
   createdAt: Date;
   assignedTo: number | null;
   metadata: Record<string, any> | null;
+  priority: string | null; //Added priority
+  dueDate: Date | null; //Added due date
+
 }
 
 export interface Comment {
@@ -99,4 +107,23 @@ export interface List {
   name: string;
   projectId: number;
   createdAt: Date;
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  status: 'active' | 'inactive';
+  createdAt: Date;
+}
+
+export interface AgentExecution {
+  id: string;
+  agentId: string;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  action: string;
+  parameters: Record<string, any>;
+  result: any;
+  startedAt: Date;
+  completedAt?: Date;
 }

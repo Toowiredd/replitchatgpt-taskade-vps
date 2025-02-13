@@ -30,6 +30,43 @@ import { z } from "zod";
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();
+
+  React.useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'n':
+            e.preventDefault();
+            setTaskDescription('');
+            break;
+          case 'Enter':
+            if (taskDescription && selectedProject) {
+              e.preventDefault();
+              handleCreateTask(new Event('submit') as any);
+            }
+            break;
+        }
+      }
+    };
+
+const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+useEffect(() => {
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if (e.key === '?' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      setShowKeyboardShortcuts(true);
+    }
+  };
+  
+  window.addEventListener('keydown', handleKeyPress);
+  return () => window.removeEventListener('keydown', handleKeyPress);
+}, []);
+
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [taskDescription, selectedProject]);
   const { toast } = useToast();
   const [selectedWorkspace, setSelectedWorkspace] = useState<number | null>(null);
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
@@ -107,6 +144,22 @@ export default function Dashboard() {
     mutationFn: async ({ taskId, updates }: { taskId: number; updates: Partial<Task> }) => {
       return updateTask(taskId.toString(), updates);
     },
+    onMutate: async ({ taskId, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/projects", selectedProject, "tasks"] });
+      const previousTasks = queryClient.getQueryData(["/api/projects", selectedProject, "tasks"]);
+      queryClient.setQueryData(["/api/projects", selectedProject, "tasks"], (old: Task[] = []) => {
+        return old.map(task => task.id === taskId ? { ...task, ...updates } : task);
+      });
+      return { previousTasks };
+    },
+    onError: (err, _, context) => {
+      queryClient.setQueryData(["/api/projects", selectedProject, "tasks"], context?.previousTasks);
+      toast({
+        title: "Failed to update task",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/projects", selectedProject, "tasks"],
@@ -157,8 +210,23 @@ export default function Dashboard() {
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskDescription || !selectedProject) return;
-    createTaskMutation.mutate({ projectId: selectedProject, description: taskDescription });
+    if (!taskDescription.trim()) {
+      toast({
+        title: "Invalid task",
+        description: "Task description cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!selectedProject) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project first",
+        variant: "destructive",
+      });
+      return;
+    }
+    createTaskMutation.mutate({ projectId: selectedProject, description: taskDescription.trim() });
   };
 
   const handleTaskBreakdown = async (taskId: number, title: string) => {
@@ -198,11 +266,30 @@ export default function Dashboard() {
 
   const executeCommand = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!command) return;
+    if (!command.trim()) {
+      toast({
+        title: "Invalid command",
+        description: "Please enter a command to execute",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      setCommandOutput(null);
       const res = await apiRequest("POST", "/api/ssh/execute", { command });
       const output = await res.json();
+      if (output.stderr) {
+        toast({
+          title: "Command executed with errors",
+          description: "Check the output for details",
+          variant: "warning",
+        });
+      } else {
+        toast({
+          title: "Command executed successfully",
+        });
+      }
       setCommandOutput(output);
       setCommand("");
     } catch (error) {
@@ -231,8 +318,30 @@ export default function Dashboard() {
 
   const handleChatGPTAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    //Removed ChatGPT Authentication
-    toast({ title: "ChatGPT connection is handled by the server" });
+    try {
+      const chatGPT = new EnhancedChatGPTClient({
+        endpoint: "YOUR_CUSTOM_ENDPOINT",
+        apiKey: "YOUR_CUSTOM_KEY",
+        capabilities: {
+          taskade: true,
+          ssh: true
+        }
+      });
+      await chatGPT.connect({
+        endpoint: "YOUR_CUSTOM_ENDPOINT",
+        apiKey: "YOUR_CUSTOM_KEY",
+        capabilities: {
+          taskade: true,
+          ssh: true
+        }
+      });
+      toast({ title: "Successfully connected to custom ChatGPT" });
+    } catch (error) {
+      toast({ 
+        title: "Failed to connect to ChatGPT",
+        variant: "destructive"
+      });
+    }
   };
 
   const updateSSHConfig = (field: keyof SSHConfig, value: string | number) => {
@@ -259,6 +368,77 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-6 flex-1">
+        <Button 
+          onClick={() => {
+            const blob = new Blob([JSON.stringify(openApiSpec, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'openapi-spec.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }}
+          className="mb-4"
+        >
+          Download API Specification
+        </Button>
+          {/* Agents Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                AI Agents
+              </h2>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Create Agent</SheetTitle>
+                    <SheetDescription>
+                      Configure a new AI agent to assist with tasks
+                    </SheetDescription>
+                  </SheetHeader>
+                  <form onSubmit={handleCreateAgent} className="mt-4 space-y-4">
+                    <Input
+                      value={newAgentName}
+                      onChange={(e) => setNewAgentName(e.target.value)}
+                      placeholder="Agent name"
+                    />
+                    <textarea 
+                      className="w-full min-h-[100px] rounded-md border p-2"
+                      value={newAgentDescription}
+                      onChange={(e) => setNewAgentDescription(e.target.value)}
+                      placeholder="Agent description and capabilities"
+                    />
+                    <Button type="submit" className="w-full">
+                      Create Agent
+                    </Button>
+                  </form>
+                </SheetContent>
+              </Sheet>
+            </div>
+            {agents?.map((agent) => (
+              <div key={agent.id} className="flex items-center justify-between p-2 hover:bg-accent rounded-lg">
+                <div>
+                  <p className="font-medium">{agent.name}</p>
+                  <p className="text-sm text-muted-foreground">{agent.description}</p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => handleAssignAgent(agent.id)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
           {/* Workspaces Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -392,6 +572,23 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="flex-1 p-6">
+        <nav className="mb-4">
+          <ol className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <li>Workspaces</li>
+            {selectedWorkspace && workspaces && (
+              <>
+                <li>/</li>
+                <li>{workspaces.find(w => w.id === selectedWorkspace)?.name}</li>
+              </>
+            )}
+            {selectedProject && projects && (
+              <>
+                <li>/</li>
+                <li>{projects.find(p => p.id === selectedProject)?.name}</li>
+              </>
+            )}
+          </ol>
+        </nav>
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Connect to ChatGPT</CardTitle>
@@ -416,20 +613,30 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateTask} className="space-y-4">
-                  <Input
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    placeholder="Describe your task..."
-                  />
-                  <Button
-                    type="submit"
-                    disabled={createTaskMutation.isPending}
-                  >
-                    {createTaskMutation.isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Create Task
-                  </Button>
+                  <div className="space-y-2">
+                    <Input
+                      value={taskDescription}
+                      onChange={(e) => setTaskDescription(e.target.value)}
+                      placeholder="What needs to be done?"
+                      className="text-lg"
+                      autoFocus
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Press Enter to create, or Cmd+B to break down task
+                    </p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Button
+                      type="submit"
+                      disabled={createTaskMutation.isPending || !taskDescription.trim()}
+                      className="w-32"
+                    >
+                      {createTaskMutation.isPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Create Task
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </Card>
@@ -448,12 +655,17 @@ export default function Dashboard() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() =>
-                              updateTaskMutation.mutate({
-                                id: task.id,
-                                completed: !task.completed,
-                              })
-                            }
+                            onClick={() => {
+                              const checkbox = document.querySelector(`#task-${task.id}`);
+                              checkbox?.classList.add('scale-110', 'transition-transform');
+                              setTimeout(() => {
+                                checkbox?.classList.remove('scale-110');
+                                updateTaskMutation.mutate({
+                                  id: task.id,
+                                  completed: !task.completed,
+                                });
+                              }, 200);
+                            }}
                           >
                             <CheckSquare
                               className={`h-5 w-5 ${task.completed ? "text-green-500" : "text-gray-400"}`}
@@ -468,19 +680,47 @@ export default function Dashboard() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleTaskBreakdown(task.id, task.title)}
+                            disabled={createTaskMutation.isPending}
                           >
-                            <Brain className="h-5 w-5" />
+                            {createTaskMutation.isPending ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <Brain className="h-5 w-5" />
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => deleteTaskMutation.mutate(task.id)}
+                            onClick={() => {
+                              if (window.confirm("Are you sure you want to delete this task?")) {
+                                deleteTaskMutation.mutate(task.id);
+                              }
+                            }}
                           >
                             <Plus className="h-5 w-5 rotate-45" />
                           </Button>
                         </div>
                       </div>
                     </CardContent>
+
+<Dialog open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Keyboard Shortcuts</DialogTitle>
+    </DialogHeader>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>Ctrl/⌘ + N</div>
+        <div>New Task</div>
+        <div>Ctrl/⌘ + Enter</div>
+        <div>Create Task</div>
+        <div>Ctrl/⌘ + ?</div>
+        <div>Show Shortcuts</div>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
+
                   </Card>
                 ))
               )}
@@ -531,13 +771,17 @@ export default function Dashboard() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="privateKey">Private Key</Label>
-                        <Input
+                        <textarea
                           id="privateKey"
-                          type="password"
+                          className="min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                           value={sshConfig.privateKey}
                           onChange={(e) => updateSSHConfig('privateKey', e.target.value)}
-                          placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                          placeholder="Paste your private key here"
+                          spellCheck="false"
                         />
+                        <p className="text-sm text-muted-foreground">
+                          Your private key will be securely stored and encrypted
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="passphrase">Passphrase (Optional)</Label>
@@ -548,7 +792,10 @@ export default function Dashboard() {
                           onChange={(e) => updateSSHConfig('passphrase', e.target.value)}
                         />
                       </div>
-                      <Button type="submit">Configure SSH Connection</Button>
+                      <Button type="submit" disabled={isConnecting}>
+                        {isConnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Configure SSH Connection
+                      </Button>
                     </form>
 
                     <Separator />

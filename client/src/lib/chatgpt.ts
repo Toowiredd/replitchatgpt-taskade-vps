@@ -1,95 +1,100 @@
-import { z } from "zod";
 
-// Define types for ChatGPT responses
-export const chatGptResponseSchema = z.object({
-  text: z.string(),
-  conversationId: z.string().optional(),
-  messageId: z.string().optional()
-});
+import { ChatGPTClient } from 'openai';
+import { SSHManager, getSSHInstance } from './ssh';
+import * as taskade from './taskade';
 
-type ChatGPTResponse = z.infer<typeof chatGptResponseSchema>;
-
-export class ChatGPTClient {
-  private accessToken: string | null = null;
-  private conversationId: string | null = null;
-
-  constructor() {
-    // Initialize with stored token if available
-    this.accessToken = localStorage.getItem('chatgpt_token');
-  }
-
-  async authenticate(token: string) {
-    this.accessToken = token;
-    localStorage.setItem('chatgpt_token', token);
-  }
-
-  async analyzeTask(description: string): Promise<{
-    title: string;
-    priority: "low" | "medium" | "high";
-    estimatedTime: string;
-  }> {
-    const prompt = `Please analyze this task and provide a JSON response with: title (a concise name), priority (low/medium/high), and estimatedTime. Task: ${description}`;
-    const response = await this.sendMessage(prompt);
-    try {
-      return JSON.parse(response.text);
-    } catch (error) {
-      throw new Error("Failed to parse ChatGPT response");
-    }
-  }
-
-  async suggestTaskBreakdown(task: string): Promise<string[]> {
-    const prompt = `Break down this task into smaller subtasks and provide a JSON array of subtask descriptions. Task: ${task}`;
-    const response = await this.sendMessage(prompt);
-    try {
-      const result = JSON.parse(response.text);
-      return result.subtasks || [];
-    } catch (error) {
-      throw new Error("Failed to parse ChatGPT response");
-    }
-  }
-
-  private async sendMessage(message: string): Promise<ChatGPTResponse> {
-    if (!this.accessToken) {
-      throw new Error("Not authenticated with ChatGPT");
-    }
-
-    const response = await fetch('https://chat.openai.com/api/conversation', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.accessToken}`
-      },
-      body: JSON.stringify({
-        message,
-        conversation_id: this.conversationId,
-        action: "next"
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to communicate with ChatGPT");
-    }
-
-    const data = await response.json();
-    this.conversationId = data.conversation_id || this.conversationId;
-
-    return chatGptResponseSchema.parse({
-      text: data.message.content.parts[0],
-      conversationId: data.conversation_id,
-      messageId: data.message.id
-    });
-  }
-
-  isAuthenticated(): boolean {
-    return !!this.accessToken;
-  }
-
-  logout() {
-    this.accessToken = null;
-    this.conversationId = null;
-    localStorage.removeItem('chatgpt_token');
-  }
+export interface ChatGPTConfig {
+  endpoint: string;
+  apiKey?: string;
+  capabilities: {
+    taskade: boolean;
+    ssh: boolean;
+  };
 }
 
-// Create a singleton instance
-export const chatGPT = new ChatGPTClient();
+export class EnhancedChatGPTClient {
+  private config: ChatGPTConfig;
+  private client: ChatGPTClient;
+
+  constructor(config: ChatGPTConfig) {
+    this.config = config;
+    this.client = new ChatGPTClient({
+      apiKey: config.apiKey,
+    });
+  }
+
+  async connect(config: ChatGPTConfig) {
+    this.config = config;
+  }
+
+  async executeTaskadeCommand(command: string, params: any) {
+    if (!this.config.capabilities.taskade) {
+      throw new Error('Taskade capability not enabled');
+    }
+    
+    switch (command) {
+      case 'createWorkspace':
+        return taskade.createWorkspace(params.name, params.settings);
+      case 'createProject':
+        return taskade.createProject(params.workspaceId, params.name, params.template);
+      case 'createTask':
+        return taskade.createTask(params.projectId, params.title, params.options);
+      case 'executeAgentAction':
+        return taskade.executeAgentAction(params.agentId, params.action, params.parameters);
+      default:
+        throw new Error(`Unknown Taskade command: ${command}`);
+    }
+  }
+
+  async executeSSHCommand(command: string) {
+    if (!this.config.capabilities.ssh) {
+      throw new Error('SSH capability not enabled');
+    }
+    
+    const ssh = getSSHInstance();
+    if (!ssh) {
+      throw new Error('SSH not connected');
+    }
+    
+    return ssh.executeCommand(command);
+  }
+
+  async chat(message: string, context?: {
+    taskade?: boolean;
+    ssh?: boolean;
+  }) {
+    try {
+      // Process commands if they match specific patterns
+      if (message.startsWith('/taskade ') && this.config.capabilities.taskade) {
+        const [_, command, ...args] = message.split(' ');
+        return this.executeTaskadeCommand(command, JSON.parse(args.join(' ')));
+      }
+      
+      if (message.startsWith('/ssh ') && this.config.capabilities.ssh) {
+        const command = message.slice(5);
+        return this.executeSSHCommand(command);
+      }
+
+      // Regular chat if no special commands
+      const response = await fetch(this.config.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.config.apiKey && { 'Authorization': `Bearer ${this.config.apiKey}` })
+        },
+        body: JSON.stringify({ 
+          message,
+          context: {
+            canUseTaskade: this.config.capabilities.taskade,
+            canUseSSH: this.config.capabilities.ssh
+          }
+        })
+      });
+      
+      return response.json();
+    } catch (error) {
+      console.error('ChatGPT error:', error);
+      throw error;
+    }
+  }
+}
