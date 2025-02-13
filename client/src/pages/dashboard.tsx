@@ -35,7 +35,13 @@ export default function Dashboard() {
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [sshConfig, setSSHConfig] = useState<z.infer<typeof sshConfigSchema> | null>(null);
+  const [sshConfig, setSSHConfig] = useState<SSHConfig>({
+    host: "",
+    port: 22,
+    username: "",
+    privateKey: "",
+    passphrase: undefined,
+  });
   const [command, setCommand] = useState("");
   const [commandOutput, setCommandOutput] = useState<{ stdout: string; stderr: string } | null>(null);
 
@@ -78,7 +84,7 @@ export default function Dashboard() {
 
   const createTaskMutation = useMutation({
     mutationFn: async ({ projectId, description }: { projectId: number; description: string }) => {
-      return createTask(projectId, description);
+      return createTask(projectId.toString(), description);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -87,24 +93,52 @@ export default function Dashboard() {
       setTaskDescription("");
       toast({ title: "Task created successfully" });
     },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "An error occurred";
+      toast({
+        title: "Failed to create task",
+        description: message,
+        variant: "destructive",
+      });
+    },
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: updateTask,
+    mutationFn: async ({ taskId, updates }: { taskId: number; updates: Partial<Task> }) => {
+      return updateTask(taskId.toString(), updates);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/projects", selectedProject, "tasks"],
       });
     },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "An error occurred";
+      toast({
+        title: "Failed to update task",
+        description: message,
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteTaskMutation = useMutation({
-    mutationFn: deleteTask,
+    mutationFn: async (taskId: number) => {
+      return deleteTask(taskId.toString());
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/projects", selectedProject, "tasks"],
       });
       toast({ title: "Task deleted successfully" });
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "An error occurred";
+      toast({
+        title: "Failed to delete task",
+        description: message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -140,7 +174,7 @@ export default function Dashboard() {
     } catch (error) {
       toast({
         title: "Failed to create task breakdown",
-        description: error.message,
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     }
@@ -156,7 +190,7 @@ export default function Dashboard() {
     } catch (error) {
       toast({
         title: "Failed to configure SSH connection",
-        description: error.message,
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     }
@@ -174,7 +208,7 @@ export default function Dashboard() {
     } catch (error) {
       toast({
         title: "Failed to execute command",
-        description: error.message,
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     }
@@ -199,6 +233,13 @@ export default function Dashboard() {
     e.preventDefault();
     //Removed ChatGPT Authentication
     toast({ title: "ChatGPT connection is handled by the server" });
+  };
+
+  const updateSSHConfig = (field: keyof SSHConfig, value: string | number) => {
+    setSSHConfig(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
@@ -457,16 +498,15 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
+                    {/* SSH Configuration Form */}
                     <form onSubmit={connectSSH} className="space-y-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="host">Host</Label>
                           <Input
                             id="host"
-                            value={sshConfig?.host || ""}
-                            onChange={(e) =>
-                              setSSHConfig((prev) => ({ ...prev, host: e.target.value }))
-                            }
+                            value={sshConfig.host}
+                            onChange={(e) => updateSSHConfig('host', e.target.value)}
                             placeholder="example.com"
                           />
                         </div>
@@ -475,13 +515,8 @@ export default function Dashboard() {
                           <Input
                             id="port"
                             type="number"
-                            value={sshConfig?.port || 22}
-                            onChange={(e) =>
-                              setSSHConfig((prev) => ({
-                                ...prev,
-                                port: parseInt(e.target.value),
-                              }))
-                            }
+                            value={sshConfig.port}
+                            onChange={(e) => updateSSHConfig('port', parseInt(e.target.value))}
                           />
                         </div>
                       </div>
@@ -489,10 +524,8 @@ export default function Dashboard() {
                         <Label htmlFor="username">Username</Label>
                         <Input
                           id="username"
-                          value={sshConfig?.username || ""}
-                          onChange={(e) =>
-                            setSSHConfig((prev) => ({ ...prev, username: e.target.value }))
-                          }
+                          value={sshConfig.username}
+                          onChange={(e) => updateSSHConfig('username', e.target.value)}
                           placeholder="root"
                         />
                       </div>
@@ -501,10 +534,8 @@ export default function Dashboard() {
                         <Input
                           id="privateKey"
                           type="password"
-                          value={sshConfig?.privateKey || ""}
-                          onChange={(e) =>
-                            setSSHConfig((prev) => ({ ...prev, privateKey: e.target.value }))
-                          }
+                          value={sshConfig.privateKey}
+                          onChange={(e) => updateSSHConfig('privateKey', e.target.value)}
                           placeholder="-----BEGIN RSA PRIVATE KEY-----"
                         />
                       </div>
@@ -513,10 +544,8 @@ export default function Dashboard() {
                         <Input
                           id="passphrase"
                           type="password"
-                          value={sshConfig?.passphrase || ""}
-                          onChange={(e) =>
-                            setSSHConfig((prev) => ({ ...prev, passphrase: e.target.value }))
-                          }
+                          value={sshConfig.passphrase || ''}
+                          onChange={(e) => updateSSHConfig('passphrase', e.target.value)}
                         />
                       </div>
                       <Button type="submit">Configure SSH Connection</Button>
