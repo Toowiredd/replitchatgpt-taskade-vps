@@ -534,15 +534,24 @@ useEffect(() => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateTask} className="space-y-4">
-                  <Input
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    placeholder="Describe your task..."
-                  />
-                  <Button
-                    type="submit"
-                    disabled={createTaskMutation.isPending}
-                  >
+                  <div className="space-y-2">
+                    <Input
+                      value={taskDescription}
+                      onChange={(e) => setTaskDescription(e.target.value)}
+                      placeholder="What needs to be done?"
+                      className="text-lg"
+                      autoFocus
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Press Enter to create, or Cmd+B to break down task
+                    </p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Button
+                      type="submit"
+                      disabled={createTaskMutation.isPending || !taskDescription.trim()}
+                      className="w-32"
+                    >
                     {createTaskMutation.isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
@@ -566,12 +575,17 @@ useEffect(() => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() =>
-                              updateTaskMutation.mutate({
-                                id: task.id,
-                                completed: !task.completed,
-                              })
-                            }
+                            onClick={() => {
+                              const checkbox = document.querySelector(`#task-${task.id}`);
+                              checkbox?.classList.add('scale-110', 'transition-transform');
+                              setTimeout(() => {
+                                checkbox?.classList.remove('scale-110');
+                                updateTaskMutation.mutate({
+                                  id: task.id,
+                                  completed: !task.completed,
+                                });
+                              }, 200);
+                            }}
                           >
                             <CheckSquare
                               className={`h-5 w-5 ${task.completed ? "text-green-500" : "text-gray-400"}`}
