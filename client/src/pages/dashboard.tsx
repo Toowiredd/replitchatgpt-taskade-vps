@@ -368,6 +368,22 @@ useEffect(() => {
         </div>
 
         <div className="space-y-6 flex-1">
+        <Button 
+          onClick={() => {
+            const blob = new Blob([JSON.stringify(openApiSpec, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'openapi-spec.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }}
+          className="mb-4"
+        >
+          Download API Specification
+        </Button>
           {/* Agents Section */}
           <div>
             <div className="flex items-center justify-between mb-2">
