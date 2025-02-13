@@ -67,6 +67,46 @@ export function registerRoutes(app: Express): Server {
     res.sendStatus(204);
   });
 
+  // ChatGPT API routes
+  app.post("/api/chatgpt/connect", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { endpoint, apiKey } = req.body;
+    
+    try {
+      // Store connection details in user's session
+      req.session.chatgpt = { endpoint, apiKey };
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/chatgpt/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { message } = req.body;
+    const config = req.session.chatgpt;
+
+    if (!config) {
+      return res.status(400).json({ message: "ChatGPT not configured" });
+    }
+
+    try {
+      const response = await fetch(config.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
+        },
+        body: JSON.stringify({ message })
+      });
+      
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // SSH routes
   app.post("/api/ssh/connect", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
