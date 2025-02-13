@@ -319,13 +319,21 @@ useEffect(() => {
   const handleChatGPTAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const chatGPT = new ChatGPTClient({
+      const chatGPT = new EnhancedChatGPTClient({
         endpoint: "YOUR_CUSTOM_ENDPOINT",
-        apiKey: "YOUR_CUSTOM_KEY" // Optional
+        apiKey: "YOUR_CUSTOM_KEY",
+        capabilities: {
+          taskade: true,
+          ssh: true
+        }
       });
       await chatGPT.connect({
         endpoint: "YOUR_CUSTOM_ENDPOINT",
-        apiKey: "YOUR_CUSTOM_KEY" // Optional
+        apiKey: "YOUR_CUSTOM_KEY",
+        capabilities: {
+          taskade: true,
+          ssh: true
+        }
       });
       toast({ title: "Successfully connected to custom ChatGPT" });
     } catch (error) {
