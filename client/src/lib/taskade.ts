@@ -1,6 +1,4 @@
-// Import required types
 import type { Workspace, Project, Task } from "@shared/schema";
-import { apiRequest } from "./queryClient";
 
 const TASKADE_API_BASE = "https://api.taskade.com/v1";
 
